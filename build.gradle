@@ -36,6 +36,8 @@ dependencies {
   testImplementation "io.vertx:vertx-junit5:$vertxVersion"
   testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterEngineVersion"
   testImplementation "org.junit.jupiter:junit-jupiter-api:$junitJupiterEngineVersion"
+
+  compile 'io.vertx:vertx-mysql-client:3.8.1'
 }
 
 
@@ -49,6 +51,8 @@ shadowJar {
   }
 }
 
+
+
 test {
   useJUnitPlatform()
   testLogging {
@@ -57,5 +61,5 @@ test {
 }
 
 run {
-  args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange"]
+  args = ['run', mainVerticleName, "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange"]
 }

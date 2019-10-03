@@ -2,22 +2,134 @@ package com.example.starter;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import io.vertx.core.http.*;
+import io.vertx.ext.web.*;
+import com.example.starter.User;
+import java.util.*;
+import io.vertx.core.json.*;
+import io.vertx.ext.web.handler.*;
 
 public class MainVerticle extends AbstractVerticle {
 
+  // Store our readingList
+  private Map readingList = new LinkedHashMap();
+  // Create a readingList
+  private void createSomeData() {
+      User user1 = new User(
+          "Pramuditha",
+          "15000");
+      readingList.put(user1.getId(), user1);
+
+      User user2 = new User(
+          "Achini",
+          "25000");
+      readingList.put(user2.getId(), user2);
+  };
+
+  private void getAll(RoutingContext rc) {
+    rc.response()
+        .putHeader("content-type", "application/json; charset=utf-8")
+        .end(Json.encodePrettily(readingList.values()));
+  }
+
+  private void getOne(RoutingContext rc) {
+    String id = rc.request().getParam("id");
+    Integer idAsInteger = Integer.valueOf(id);
+
+    rc.response()
+      .end(Json.encodePrettily(readingList.get(idAsInteger)));
+  }
+
+  private void addOne(RoutingContext rc) {
+    User user = rc.getBodyAsJson().mapTo(User.class);
+    readingList.put(user.getId(), user);
+    rc.response()
+        .setStatusCode(201)
+        .putHeader("content-type", "application/json; charset=utf-8")
+        .end(Json.encodePrettily(user));
+  }
+
+  private void deleteOne(RoutingContext rc) {
+    String id = rc.request().getParam("id");
+    try {
+        Integer idAsInteger = Integer.valueOf(id);
+        readingList.remove(idAsInteger);
+        rc.response().setStatusCode(204).end();
+    } catch (NumberFormatException e) {
+        rc.response().setStatusCode(400).end();
+    }
+  }
+
+  private void updateOne(RoutingContext rc){
+
+    String id = rc.request().getParam("id");
+    Integer idAsInteger = Integer.valueOf(id);
+
+    User user = rc.getBodyAsJson().mapTo(User.class);
+    try {
+
+    }
+  }
+
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
-    vertx.createHttpServer().requestHandler(req -> {
-      req.response()
-        .putHeader("content-type", "text/plain")
-        .end("Hello world from Vert.x!");
-    }).listen(8888, http -> {
-      if (http.succeeded()) {
-        startPromise.complete();
-        System.out.println("HTTP server started on port 8888");
-      } else {
-        startPromise.fail(http.cause());
-      }
-    });
-  }
+
+    // vertx.createHttpServer().requestHandler(req -> {
+    //   req.response()
+    //     .putHeader("content-type", "text/plain")
+    //     .end("Hello world from Vert.x!");
+    // }).listen(8888, http -> {
+    //   if (http.succeeded()) {
+    //     startPromise.complete();
+    //     System.out.println("HTTP server started on port 8888");
+    //   } else {
+    //     startPromise.fail(http.cause());
+    //   }
+    // });
+
+    HttpServer httpServer = vertx.createHttpServer();
+
+    Router router = Router.router(vertx);
+
+    httpServer.requestHandler(router::accept)
+              .listen(8888);
+
+    router.get("/pk/:name")
+          .handler(routingContext -> {
+            String name = routingContext.request().getParam("name");
+            HttpServerResponse response = routingContext.response();
+            response.putHeader("contex-type", "text/plain");
+            response.setChunked(true);
+            response.write("Hi "+ name);
+            response.end();
+          });
+
+    router.post("/pk")
+          .handler(routingContext -> {
+            System.out.println("Ho Hoooo");
+            HttpServerResponse response = routingContext.response();
+            response.putHeader("contex-type", "text/plain");
+            response.end("Hi Achini");
+          });
+
+
+
+
+    createSomeData();
+
+    //Get All Records
+    router.get("/api/users").handler(this::getAll);
+
+    //Get One Record
+    router.get("/api/users/:id").handler(this::getOne);
+    //Add New Record
+    router.route("/api/users*").handler(BodyHandler.create());
+    router.post("/api/users").handler(this::addOne);
+
+    //Delete Record
+    router.delete("/api/users/:id").handler(this::deleteOne);
+
+    //Update Record
+    router.post("/api/users/:id").handler(this::updateOne);
+   }
 }
