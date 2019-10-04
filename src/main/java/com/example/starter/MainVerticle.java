@@ -11,6 +11,15 @@ import io.vertx.ext.web.handler.*;
 
 public class MainVerticle extends AbstractVerticle {
 
+  // protected SQLClient client;
+
+  // @Before
+  // public void setUp() throws Exception {
+  //   super.setUp();
+  //   client = JDBCClient.createNonShared(vertx, config());
+  // }
+
+
   // Store our readingList
   private Map readingList = new LinkedHashMap();
   // Create a readingList
@@ -66,8 +75,12 @@ public class MainVerticle extends AbstractVerticle {
     Integer idAsInteger = Integer.valueOf(id);
 
     User user = rc.getBodyAsJson().mapTo(User.class);
-    try {
 
+    try {
+      readingList.put(idAsInteger, user);
+      rc.response().end(Json.encodePrettily(readingList.values()));
+    } catch (NumberFormatException e) {
+      rc.response().setStatusCode(400).end();
     }
   }
 
