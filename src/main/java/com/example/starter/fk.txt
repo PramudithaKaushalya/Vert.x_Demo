@@ -1,0 +1,86 @@
+JDBCClient jdbc;
+
+  private void insert(User user, SQLConnection connection, Handler<AsyncResult<User>> next) {
+    String sql = "INSERT INTO users (name, salary) VALUES ?, ?";
+    connection.updateWithParams(sql,
+        new JsonArray().add(user.getName()).add(user.getSalary()),
+        (ar) -> {
+          if (ar.failed()) {
+            next.handle(Future.failedFuture(ar.cause()));
+            return;
+          }
+          UpdateResult result = ar.result();
+          // Build a new user instance with the generated id.
+          User w = new User(result.getKeys().getInteger(0), user.getName(), user.getSalary());
+          next.handle(Future.succeededFuture(w));
+        });
+  }
+
+  private void createData(AsyncResult<SQLConnection> result, Handler<AsyncResult<Void>> next, Future<Void> fut) {
+    if (result.failed()) {
+      fut.fail(result.cause());
+    } else {
+      SQLConnection connection = result.result();
+      connection.execute(
+          "CREATE TABLE IF NOT EXISTS users (id INTEGER IDENTITY, name varchar(100), salary varchar(10))",
+          ar -> {
+            if (ar.failed()) {
+              fut.fail(ar.cause());
+              connection.close();
+              return;
+            }
+            connection.query("SELECT * FROM users", select -> {
+              if (select.failed()) {
+                fut.fail(ar.cause());
+                connection.close();
+                return;
+              }
+              if (select.result().getNumRows() == 0) {
+                insert(
+                    new User("Asanka", "15000"),
+                    connection,
+                    (v) -> insert(
+                        new User("Kapila", "20000"),
+                        connection,
+                        (r) -> {
+                          next.handle(Future.<Void>succeededFuture());
+                          connection.close();
+                        }));
+              } else {
+                next.handle(Future.<Void>succeededFuture());
+                connection.close();
+              }
+            });
+          });
+    }
+  }
+
+  private void getAll(RoutingContext routingContext) {
+    jdbc.getConnection(ar -> {
+      SQLConnection connection = ar.result();
+      connection.query("SELECT * FROM Users", result -> {
+        List<User> users = result.result().getRows().stream().map(User::new).collect(Collectors.toList());
+        routingContext.response()
+            .putHeader("content-type", "application/json; charset=utf-8")
+            .end("Json.encodePrettily(users)");
+        connection.close(); // Close the connection
+      });
+    });
+  }
+
+  private void startBackend(Handler<AsyncResult<SQLConnection>> next, Future<Void> fut) {
+    jdbc.getConnection(ar -> {
+      if (ar.failed()) {
+        fut.fail(ar.cause());
+      } else {
+        next.handle(Future.succeededFuture(ar.result()));
+      }
+    });
+  }
+
+    JsonObject config = new JsonObject()
+      .put("url", "jdbc:hsqldb:mem:test?shutdown=true")
+      .put("driver_class", "org.hsqldb.jdbcDriver")
+      .put("max_pool_size", 30);
+
+    jdbc = JDBCClient.createShared(vertx, config);

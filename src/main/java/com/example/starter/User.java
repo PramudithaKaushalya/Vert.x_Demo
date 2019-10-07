@@ -23,6 +23,12 @@ public class User {
         this.salary = salary;
     }
 
+    public User(Integer id, String name, String salary){
+      this.id = id;
+      this.name = name;
+      this.salary = salary;
+  }
+
     public int getId() {
         return id;
     }

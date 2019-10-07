@@ -37,7 +37,9 @@ dependencies {
   testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterEngineVersion"
   testImplementation "org.junit.jupiter:junit-jupiter-api:$junitJupiterEngineVersion"
 
-  compile 'io.vertx:vertx-mysql-client:3.8.1'
+  compile 'io.vertx:vertx-jdbc-client:3.8.1'
+  compile 'org.hsqldb:hsqldb:2.3.3'
+  compile 'io.vertx:vertx-mysql-client:3.8.2'
 }
 
 

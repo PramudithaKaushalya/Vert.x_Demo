@@ -8,17 +8,15 @@ import com.example.starter.User;
 import java.util.*;
 import io.vertx.core.json.*;
 import io.vertx.ext.web.handler.*;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.*;
+import io.vertx.ext.sql.*;
 
 public class MainVerticle extends AbstractVerticle {
-
-  // protected SQLClient client;
-
-  // @Before
-  // public void setUp() throws Exception {
-  //   super.setUp();
-  //   client = JDBCClient.createNonShared(vertx, config());
-  // }
-
 
   // Store our readingList
   private Map readingList = new LinkedHashMap();
@@ -87,25 +85,52 @@ public class MainVerticle extends AbstractVerticle {
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
 
-    // vertx.createHttpServer().requestHandler(req -> {
-    //   req.response()
-    //     .putHeader("content-type", "text/plain")
-    //     .end("Hello world from Vert.x!");
-    // }).listen(8888, http -> {
-    //   if (http.succeeded()) {
-    //     startPromise.complete();
-    //     System.out.println("HTTP server started on port 8888");
-    //   } else {
-    //     startPromise.fail(http.cause());
-    //   }
-    // });
-
     HttpServer httpServer = vertx.createHttpServer();
 
     Router router = Router.router(vertx);
 
     httpServer.requestHandler(router::accept)
               .listen(8888);
+
+    // MySQLConnectOptions connectOptions = new MySQLConnectOptions()
+    //   .setPort(3306)
+    //   .setHost("the-host")
+    //   .setDatabase("the-db")
+    //   .setUser("user")
+    //   .setPassword("secret");
+
+    // // Pool options
+    // PoolOptions poolOptions = new PoolOptions()
+    //   .setMaxSize(5);
+    // // Create the pooled client
+    // MySQLPool client = MySQLPool.pool(vertx, connectOptions, poolOptions);
+
+    // // Get a connection from the pool
+    // client.getConnection(ar1 -> {
+
+    //   if (ar1.succeeded()) {
+
+    //     System.out.println("Connected");
+
+    //     // Obtain our connection
+    //     SqlConnection conn = ar1.result();
+
+    //     // All operations execute on the same connection
+    //     conn.query("SELECT * FROM users WHERE id='julien'", ar2 -> {
+    //       if (ar2.succeeded()) {
+    //         conn.query("SELECT * FROM users WHERE id='emad'", ar3 -> {
+    //           // Release the connection to the pool
+    //           conn.close();
+    //         });
+    //       } else {
+    //         // Release the connection to the pool
+    //         conn.close();
+    //       }
+    //     });
+    //   } else {
+    //     System.out.println("Could not connect: " + ar1.cause().getMessage());
+    //   }
+    // });
 
     router.get("/pk/:name")
           .handler(routingContext -> {
@@ -125,9 +150,6 @@ public class MainVerticle extends AbstractVerticle {
             response.end("Hi Achini");
           });
 
-
-
-
     createSomeData();
 
     //Get All Records
@@ -135,6 +157,7 @@ public class MainVerticle extends AbstractVerticle {
 
     //Get One Record
     router.get("/api/users/:id").handler(this::getOne);
+
     //Add New Record
     router.route("/api/users*").handler(BodyHandler.create());
     router.post("/api/users").handler(this::addOne);
