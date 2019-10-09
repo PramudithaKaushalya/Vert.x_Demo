@@ -6,6 +6,7 @@ import io.vertx.core.http.*;
 import io.vertx.ext.web.*;
 import com.example.starter.User;
 import java.util.*;
+import java.util.stream.Collectors;
 import io.vertx.core.json.*;
 import io.vertx.ext.web.handler.*;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -15,157 +16,119 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.*;
 import io.vertx.ext.sql.*;
+import org.slf4j.*;
+import io.vertx.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
 
 public class MainVerticle extends AbstractVerticle {
 
-  // Store our readingList
-  private Map readingList = new LinkedHashMap();
-  // Create a readingList
-  private void createSomeData() {
-      User user1 = new User(
-          "Pramuditha",
-          "15000");
-      readingList.put(user1.getId(), user1);
+  private JDBCClient dbClient;
+  private static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
+  private FreeMarkerTemplateEngine templateEngine;
 
-      User user2 = new User(
-          "Achini",
-          "25000");
-      readingList.put(user2.getId(), user2);
-  };
+  private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages (Id integer identity primary key, Name varchar(255) unique, Content clob)";
+  private static final String SQL_GET_PAGE = "select Id, Content from Pages where Name = ?";
+  private static final String SQL_CREATE_PAGE = "insert into Pages values (NULL, ?, ?)";
+  private static final String SQL_SAVE_PAGE = "update Pages set Content = ? where Id = ?";
+  private static final String SQL_ALL_PAGES = "select Name from Pages";
+  private static final String SQL_DELETE_PAGE = "delete from Pages where Id = ?";
 
-  private void getAll(RoutingContext rc) {
-    rc.response()
-        .putHeader("content-type", "application/json; charset=utf-8")
-        .end(Json.encodePrettily(readingList.values()));
+  private Future<Void> prepareDatabase() {
+    Promise<Void> promise = Promise.promise();
+    dbClient = JDBCClient.createShared(vertx, new JsonObject() 
+      .put("url", "jdbc:hsqldb:file:db/wiki") 
+      .put("driver_class", "org.hsqldb.jdbcDriver") 
+      .put("max_pool_size", 30)); 
+    dbClient.getConnection(ar -> { 
+      if (ar.failed()) {
+        LOGGER.error("Could not open a database connection", ar.cause());
+        promise.fail(ar.cause()); 
+      } else {
+        SQLConnection connection = ar.result(); 
+        connection.execute(SQL_CREATE_PAGES_TABLE, create -> {
+          connection.close(); 
+          if (create.failed()) {
+            LOGGER.error("Database preparation error", create.cause());
+            promise.fail(create.cause());
+          } else {
+           promise.complete(); 
+          }
+        });
+      }
+    });
+  
+    return promise.future();
   }
 
-  private void getOne(RoutingContext rc) {
-    String id = rc.request().getParam("id");
-    Integer idAsInteger = Integer.valueOf(id);
-
-    rc.response()
-      .end(Json.encodePrettily(readingList.get(idAsInteger)));
+  private Future<Void> startHttpServer() {
+    Promise<Void> promise = Promise.promise();
+    HttpServer server = vertx.createHttpServer(); 
+    Router router = Router.router(vertx); 
+    router.get("/").handler(this::indexHandler);
+    // router.get("/wiki/:page").handler(this::pageRenderingHandler); 
+    // router.post().handler(BodyHandler.create()); 
+    // router.post("/save").handler(this::pageUpdateHandler);
+    // router.post("/create").handler(this::pageCreateHandler);
+    // router.post("/delete").handler(this::pageDeletionHandler);
+    templateEngine = FreeMarkerTemplateEngine.create(vertx);
+    server
+      .requestHandler(router) 
+      .listen(8080, ar -> { 
+        if (ar.succeeded()) {
+          LOGGER.info("HTTP server running on port 8080");
+          promise.complete();
+        } else {
+          LOGGER.error("Could not start a HTTP server", ar.cause());
+          promise.fail(ar.cause());
+        }
+      });
+  
+    return promise.future();
   }
 
-  private void addOne(RoutingContext rc) {
-    User user = rc.getBodyAsJson().mapTo(User.class);
-    readingList.put(user.getId(), user);
-    rc.response()
-        .setStatusCode(201)
-        .putHeader("content-type", "application/json; charset=utf-8")
-        .end(Json.encodePrettily(user));
-  }
-
-  private void deleteOne(RoutingContext rc) {
-    String id = rc.request().getParam("id");
-    try {
-        Integer idAsInteger = Integer.valueOf(id);
-        readingList.remove(idAsInteger);
-        rc.response().setStatusCode(204).end();
-    } catch (NumberFormatException e) {
-        rc.response().setStatusCode(400).end();
-    }
-  }
-
-  private void updateOne(RoutingContext rc){
-
-    String id = rc.request().getParam("id");
-    Integer idAsInteger = Integer.valueOf(id);
-
-    User user = rc.getBodyAsJson().mapTo(User.class);
-
-    try {
-      readingList.put(idAsInteger, user);
-      rc.response().end(Json.encodePrettily(readingList.values()));
-    } catch (NumberFormatException e) {
-      rc.response().setStatusCode(400).end();
-    }
+  private void indexHandler(RoutingContext context) {
+    dbClient.getConnection(car -> {
+      if (car.succeeded()) {
+      SQLConnection connection = car.result();
+      connection.query(SQL_ALL_PAGES, res -> {
+        connection.close();
+        if (res.succeeded()) {
+          List<String> pages = res.result() 
+          .getResults()
+          .stream()
+          .map(json -> json.getString(0))
+          .sorted()
+          .collect(Collectors.toList());
+          context.put("title", "Wiki home");
+          context.put("pages", pages);
+          templateEngine.render(context.data(), "templates/index.ftl", ar -> { 
+            if (ar.succeeded()) {
+              context.response().putHeader("Content-Type", "text/html");
+              context.response().end(ar.result()); 
+            } else {
+              context.fail(ar.cause());
+            }
+          });
+        } else {
+            context.fail(res.cause()); 
+        }
+        });
+        } else {
+          context.fail(car.cause());
+        }
+    });
   }
 
   @Override
-  public void start(Promise<Void> startPromise) throws Exception {
+  public void start(Promise<Void> promise) throws Exception {
+    Future<Void> steps = prepareDatabase().compose(v -> startHttpServer());
+    steps.setHandler(ar -> {
+      if (ar.succeeded()) {
+        promise.complete();
+      } else {
+        promise.fail(ar.cause());
+      }
+    });
+    
+  }
 
-    HttpServer httpServer = vertx.createHttpServer();
-
-    Router router = Router.router(vertx);
-
-    httpServer.requestHandler(router::accept)
-              .listen(8888);
-
-    // MySQLConnectOptions connectOptions = new MySQLConnectOptions()
-    //   .setPort(3306)
-    //   .setHost("the-host")
-    //   .setDatabase("the-db")
-    //   .setUser("user")
-    //   .setPassword("secret");
-
-    // // Pool options
-    // PoolOptions poolOptions = new PoolOptions()
-    //   .setMaxSize(5);
-    // // Create the pooled client
-    // MySQLPool client = MySQLPool.pool(vertx, connectOptions, poolOptions);
-
-    // // Get a connection from the pool
-    // client.getConnection(ar1 -> {
-
-    //   if (ar1.succeeded()) {
-
-    //     System.out.println("Connected");
-
-    //     // Obtain our connection
-    //     SqlConnection conn = ar1.result();
-
-    //     // All operations execute on the same connection
-    //     conn.query("SELECT * FROM users WHERE id='julien'", ar2 -> {
-    //       if (ar2.succeeded()) {
-    //         conn.query("SELECT * FROM users WHERE id='emad'", ar3 -> {
-    //           // Release the connection to the pool
-    //           conn.close();
-    //         });
-    //       } else {
-    //         // Release the connection to the pool
-    //         conn.close();
-    //       }
-    //     });
-    //   } else {
-    //     System.out.println("Could not connect: " + ar1.cause().getMessage());
-    //   }
-    // });
-
-    router.get("/pk/:name")
-          .handler(routingContext -> {
-            String name = routingContext.request().getParam("name");
-            HttpServerResponse response = routingContext.response();
-            response.putHeader("contex-type", "text/plain");
-            response.setChunked(true);
-            response.write("Hi "+ name);
-            response.end();
-          });
-
-    router.post("/pk")
-          .handler(routingContext -> {
-            System.out.println("Ho Hoooo");
-            HttpServerResponse response = routingContext.response();
-            response.putHeader("contex-type", "text/plain");
-            response.end("Hi Achini");
-          });
-
-    createSomeData();
-
-    //Get All Records
-    router.get("/api/users").handler(this::getAll);
-
-    //Get One Record
-    router.get("/api/users/:id").handler(this::getOne);
-
-    //Add New Record
-    router.route("/api/users*").handler(BodyHandler.create());
-    router.post("/api/users").handler(this::addOne);
-
-    //Delete Record
-    router.delete("/api/users/:id").handler(this::deleteOne);
-
-    //Update Record
-    router.post("/api/users/:id").handler(this::updateOne);
-   }
 }

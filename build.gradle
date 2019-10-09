@@ -32,6 +32,8 @@ dependencies {
   implementation "io.vertx:vertx-mysql-client:$vertxVersion"
   implementation "io.vertx:vertx-http-service-factory:$vertxVersion"
   implementation "io.vertx:vertx-sync:$vertxVersion"
+  implementation "io.vertx:vertx-service-proxy:$vertxVersion"
+  implementation "io.vertx:vertx-web-templ-freemarker:$vertxVersion"
 
   testImplementation "io.vertx:vertx-junit5:$vertxVersion"
   testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterEngineVersion"
@@ -40,6 +42,8 @@ dependencies {
   compile 'io.vertx:vertx-jdbc-client:3.8.1'
   compile 'org.hsqldb:hsqldb:2.3.3'
   compile 'io.vertx:vertx-mysql-client:3.8.2'
+  compile 'org.slf4j:slf4j-api:1.6.6'
+  compile 'org.freemarker:freemarker:2.3.20'
 }
 
 

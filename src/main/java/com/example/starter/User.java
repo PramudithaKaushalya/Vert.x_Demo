@@ -11,16 +11,25 @@ public class User {
 
     private String  name;
 
+    private String password;
+
+    private String email;
+
+    private String contact;
+
     private String salary;
 
     public User(){
         this.id = COUNTER.getAndIncrement();
     }
 
-    public User(String name, String salary){
+    public User(String name, String email, String contact, String password, String salary){
         this.id = COUNTER.getAndIncrement();
         this.name = name;
         this.salary = salary;
+        this.email = email;
+        this.contact = contact;
+        this.password = password;
     }
 
     public User(Integer id, String name, String salary){
@@ -42,6 +51,24 @@ public class User {
         return this;
     }
 
+    public String getEmail(){
+        return email;
+    }
+
+    public User setEmail(String email){
+        this.email = email;
+        return this;
+    }
+
+    public String getContact(){
+        return contact;
+    }
+
+    public User setContact(String contact){
+        this.contact = contact;
+        return this;
+    }
+
     public String getSalary(){
         return salary;
     }
@@ -50,4 +77,14 @@ public class User {
         this.salary = salary;
         return this;
     }
+
+    public String getPassword(){
+        return password;
+    }
+
+    public User setPassword(String password){
+        this.password = password;
+        return this;
+    }
+
 }
