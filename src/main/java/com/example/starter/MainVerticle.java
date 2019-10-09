@@ -25,9 +25,9 @@ public class MainVerticle extends AbstractVerticle {
   private static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
   private FreeMarkerTemplateEngine templateEngine;
 
-  private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages (Id integer identity primary key, Name varchar(255) unique, Content clob)";
+  private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages (Id integer, Name varchar(255) unique, Content varchar(255),primary key(Id))";
   private static final String SQL_GET_PAGE = "select Id, Content from Pages where Name = ?";
-  private static final String SQL_CREATE_PAGE = "insert into Pages values (NULL, ?, ?)";
+  private static final String SQL_CREATE_PAGE = "insert into Pages values (1, ?, ?)";
   private static final String SQL_SAVE_PAGE = "update Pages set Content = ? where Id = ?";
   private static final String SQL_ALL_PAGES = "select Name from Pages";
   private static final String SQL_DELETE_PAGE = "delete from Pages where Id = ?";
@@ -35,8 +35,10 @@ public class MainVerticle extends AbstractVerticle {
   private Future<Void> prepareDatabase() {
     Promise<Void> promise = Promise.promise();
     dbClient = JDBCClient.createShared(vertx, new JsonObject() 
-      .put("url", "jdbc:hsqldb:file:db/wiki") 
-      .put("driver_class", "org.hsqldb.jdbcDriver") 
+      .put("url", "jdbc:mysql://localhost/test") 
+      .put("driver_class", "com.mysql.jdbc.Driver")
+      .put("user", "root")
+      .put("password", "")
       .put("max_pool_size", 30)); 
     dbClient.getConnection(ar -> { 
       if (ar.failed()) {
@@ -92,6 +94,7 @@ public class MainVerticle extends AbstractVerticle {
       connection.query(SQL_ALL_PAGES, res -> {
         connection.close();
         if (res.succeeded()) {
+          System.out.println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
           List<String> pages = res.result() 
           .getResults()
           .stream()
@@ -102,17 +105,25 @@ public class MainVerticle extends AbstractVerticle {
           context.put("pages", pages);
           templateEngine.render(context.data(), "templates/index.ftl", ar -> { 
             if (ar.succeeded()) {
+              
+          System.out.println("bbbbbbbbbbbbbbbbbbbbbb");
               context.response().putHeader("Content-Type", "text/html");
               context.response().end(ar.result()); 
             } else {
+              
+          System.out.println("cccccccccccccccccccccccccccccc");
               context.fail(ar.cause());
             }
           });
         } else {
+          
+          System.out.println("ddddddddddddddddddddddddddddd");
             context.fail(res.cause()); 
         }
         });
         } else {
+          
+          System.out.println("eeeeeeeeeeeeeeeeeeeeeeeeeeee");
           context.fail(car.cause());
         }
     });
