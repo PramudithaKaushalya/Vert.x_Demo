@@ -27,9 +27,9 @@ public class MainVerticle extends AbstractVerticle {
   private static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
   private FreeMarkerTemplateEngine templateEngine;
 
-  private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages (Id integer, Name varchar(255) unique, Content varchar(1000), primary key(Id))";
+  private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages (Id integer, Name varchar(255) unique, Content blob, primary key(Id))";
   private static final String SQL_GET_PAGE = "select Id, Content from Pages where Name = ?";
-  private static final String SQL_CREATE_PAGE = "insert into Pages values (Null, ?, ?)";
+  private static final String SQL_CREATE_PAGE = "insert into Pages values (NULL, ?, ?)";
   private static final String SQL_SAVE_PAGE = "update Pages set Content = ? where Id = ?";
   private static final String SQL_ALL_PAGES = "select Name from Pages";
   private static final String SQL_DELETE_PAGE = "delete from Pages where Id = ?";
@@ -102,7 +102,7 @@ public class MainVerticle extends AbstractVerticle {
           .map(json -> json.getString(0))
           .sorted()
           .collect(Collectors.toList());
-          context.put("title", "Wiki home");
+          context.put("title", "Vert.x | MySQL");
           context.put("pages", pages);
           templateEngine.render(context.data(), "templates/index.ftl", ar -> { 
             if (ar.succeeded()) {
@@ -129,7 +129,7 @@ public class MainVerticle extends AbstractVerticle {
 
   private void pageRenderingHandler(RoutingContext context) {
     String page = context.request().getParam("page"); 
-    String content = context.request().getParam("page");
+    //String content = context.request().getParam("page");
     dbClient.getConnection(car -> {
       if (car.succeeded()) {
         SQLConnection connection = car.result();
@@ -141,11 +141,11 @@ public class MainVerticle extends AbstractVerticle {
               .findFirst()
               .orElseGet(() -> new JsonArray().add(-1).add(EMPTY_PAGE_MARKDOWN));
             Integer id = row.getInteger(0);
-            String rawContent = row.getString(1);
+            String content = row.getString(1);
             context.put("title", page);
             context.put("id", id);
             context.put("newPage", fetch.result().getResults().size() == 0 ? "yes" : "no");
-            // context.put("rawContent", rawContent);
+            //context.put("rawContent", rawContent);
             context.put("content", content); 
             context.put("timestamp", new Date().toString());
             templateEngine.render(context.data(), "templates/page.ftl", ar -> {

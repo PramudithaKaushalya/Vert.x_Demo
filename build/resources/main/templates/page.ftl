@@ -1,17 +1,21 @@
 <#include "header.ftl">
 <div class="row">
   <div class="col-md-12 mt-1">
+  <br><br><br>
   <span class="float-right">
   <a class="btn btn-outline-primary" href="/" role="button" aria-pressed="true">Home</a>
   <button class="btn btn-outline-warning" type="button" data-toggle="collapse"
   data-target="#editor" aria-expanded="false" aria-controls="editor">Edit</button>
   </span>
+
   <h1 class="display-4">
   <span class="text-muted">{</span>
   ${title}
   <span class="text-muted">}</span>
   </h1>
+  <br><br><br><br>
   </div>
+  
   <div class="col-md-12 mt-1 clearfix">
   ${content}
   </div>
@@ -30,7 +34,10 @@
   </form>
   </div>
   <div class="col-md-12 mt-1">
+  
+  <br><br><br><br>
   <hr class="mt-1">
+  
   <p class="small">Rendered: ${timestamp}</p>
   </div>
 </div>
