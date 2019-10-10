@@ -1,7 +1,11 @@
 <#include "header.ftl">
+ <br>
+  <br>
+  <br>
 <div class="row">
   <div class="col-md-12 mt-1">
   <div class="float-right">
+  <br>
   <form class="form-inline" action="/create" method="post">
   <div class="form-group">
   <input type="text" class="form-control" id="name" name="name" placeholder="New page name">
@@ -11,7 +15,11 @@
   </div>
   <h1 class="display-4">${title}</h1>
   </div>
+  <hr>
   <div class="col-md-12 mt-1">
+  <br>
+  <br>
+  <br>
   <#list pages>
   <h2>Pages:</h2>
   <ul>
